@@ -1,6 +1,7 @@
 const express = require('express');
 const cors    = require('cors');
 const { RateLimiterMemory } = require('rate-limiter-flexible');
+const fetch = require('node-fetch');
 
 // ── Firebase Admin SDK ───────────────────────────────
 const admin = require('firebase-admin');
@@ -235,7 +236,19 @@ app.post('/place-pixel', verifyToken, async (req, res) => {
   // Écriture directe dans Firebase (seule source de vérité)
   try {
     console.log('🔥 Tentative d\'écriture Firebase:', `grid/${x}_${y}`, pixel);
-    await set(ref(db, `grid/${x}_${y}`), pixel);
+    
+    // Utiliser HTTP direct pour écrire dans Firebase
+    const firebaseUrl = `https://pixelwar2-69b05-default-rtdb.europe-west1.firebasedatabase.app/grid/${x}_${y}.json`;
+    const response = await fetch(firebaseUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(pixel)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
     console.log('✅ Écriture Firebase réussie');
   } catch (e) {
     console.error('❌ Firebase write error:', e.message);
