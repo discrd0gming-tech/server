@@ -239,6 +239,46 @@ app.delete('/admin/ban', verifyAdmin, (req, res) => {
   res.json({ banned: [...bannedIPs] });
 });
 
+// POST /admin/clear-region → vider une région spécifique
+app.post('/admin/clear-region', verifyAdmin, async (req, res) => {
+  const { x1, y1, x2, y2 } = req.body;
+  
+  // Validation des coordonnées
+  const coords = [x1, y1, x2, y2].map(n => parseInt(n));
+  if (coords.some(isNaN)) {
+    return res.status(400).json({ error: 'Coordonnées invalides' });
+  }
+  
+  const [cx1, cy1, cx2, cy2] = coords;
+  
+  // Normaliser les coordonnées (ordre croissant)
+  const minX = Math.max(0, Math.min(SIZE - 1, Math.min(cx1, cx2)));
+  const maxX = Math.max(0, Math.min(SIZE - 1, Math.max(cx1, cx2)));
+  const minY = Math.max(0, Math.min(SIZE - 1, Math.min(cy1, cy2)));
+  const maxY = Math.max(0, Math.min(SIZE - 1, Math.max(cy1, cy2)));
+  
+  try {
+    // Effacer la région dans Firebase
+    const updates = {};
+    for (let x = minX; x <= maxX; x++) {
+      for (let y = minY; y <= maxY; y++) {
+        updates[`${x}_${y}`] = { color: '#000000', pseudo: 'System', ts: Date.now() };
+      }
+    }
+    
+    await set(ref(db, 'grid'), updates);
+    console.log(`🗑️ Région effacée : (${minX},${minY}) → (${maxX},${maxY})`);
+    
+    res.json({ 
+      success: true, 
+      message: `Région (${minX},${minY}) → (${maxX},${maxY}) effacée`,
+      pixelsCleared: (maxX - minX + 1) * (maxY - minY + 1)
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /admin/reset-grid → vider toute la grille
 app.post('/admin/reset-grid', verifyAdmin, async (_req, res) => {
   try {
