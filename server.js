@@ -5,24 +5,48 @@ const { RateLimiterMemory } = require('rate-limiter-flexible');
 // ── Firebase Admin SDK ───────────────────────────────
 const admin = require('firebase-admin');
 
-const serviceAccount = {
-  "type": "service_account",
-  "project_id": "pixelwar2-69b05",
-  "private_key": process.env.FIREBASE_PRIVATE_KEY || "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC5...\n-----END PRIVATE KEY-----\n",
-  "client_email": "firebase-adminsdk-xxxxx@pixelwar2-69b05.iam.gserviceaccount.com",
-  "client_id": "123456789012345678901",
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token"
-};
-
+// En production, utilise les variables d'environnement de Render
 if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    databaseURL: "https://pixelwar2-69b05-default-rtdb.europe-west1.firebasedatabase.app"
-  });
+  if (process.env.FIREBASE_PRIVATE_KEY) {
+    // Mode production avec vraie clé
+    const serviceAccount = {
+      projectId: "pixelwar2-69b05",
+      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL || "firebase-adminsdk-xxxxx@pixelwar2-69b05.iam.gserviceaccount.com"
+    };
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      databaseURL: "https://pixelwar2-69b05-default-rtdb.europe-west1.firebasedatabase.app"
+    });
+  } else {
+    // Mode développement - utilise le client SDK temporairement
+    console.warn('⚠️ Mode dév : Firebase Admin SDK non configuré');
+    const { initializeApp } = require('firebase/app');
+    const { getDatabase } = require('firebase/database');
+    
+    const firebaseConfig = {
+      apiKey: 'AIzaSyAOjsSZrGmHK3E5QjGT-IamhPX9QLOt_Qk',
+      authDomain: 'pixelwar2-69b05.firebaseapp.com',
+      databaseURL: 'https://pixelwar2-69b05-default-rtdb.europe-west1.firebasedatabase.app',
+      projectId: 'pixelwar2-69b05',
+      storageBucket: 'pixelwar2-69b05.firebasestorage.app',
+      messagingSenderId: '216084370377',
+      appId: '1:216084370377:web:c9ab6b4f22a5829898ce18',
+    };
+    
+    const firebaseApp = initializeApp(firebaseConfig);
+    const db = getDatabase(firebaseApp);
+    
+    // Créer un objet compatible avec l'API Admin
+    global.db = {
+      ref: (path) => db.ref ? db.ref(path) : { path },
+      set: (ref, data) => ref.set ? ref.set(data) : Promise.resolve(),
+      get: (ref) => ref.get ? ref.get() : Promise.resolve({ val: () => null })
+    };
+  }
 }
 
-const db = admin.database();
+const db = admin.apps.length ? admin.database() : global.db;
 const { ref, set, get } = db;
 
 // ── Express ────────────────────────────────────────────
