@@ -234,10 +234,13 @@ app.post('/place-pixel', verifyToken, async (req, res) => {
 
   // Écriture directe dans Firebase (seule source de vérité)
   try {
+    console.log('🔥 Tentative d\'écriture Firebase:', `grid/${x}_${y}`, pixel);
     await set(ref(db, `grid/${x}_${y}`), pixel);
+    console.log('✅ Écriture Firebase réussie');
   } catch (e) {
-    console.error('Firebase write error:', e.message);
-    return res.status(500).json({ error: 'Erreur serveur' });
+    console.error('❌ Firebase write error:', e.message);
+    console.error('Stack:', e.stack);
+    return res.status(500).json({ error: 'Erreur serveur Firebase' });
   }
 
   console.log(`[pixel] ${pseudo} (${ip}) → (${x},${y}) ${color}`);
