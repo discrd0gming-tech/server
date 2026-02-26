@@ -209,18 +209,18 @@ app.get('/admin/status', verifyAdmin, (_req, res) => {
   });
 });
 
-// POST /admin/panic → activer/désactiver le freeze
+// POST /admin/panic → activer le freeze
 app.post('/admin/panic', verifyAdmin, (req, res) => {
-  panicMode = req.body.active !== false; // true par défaut
-  console.log(`🚨 Mode panique : ${panicMode ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`);
-  res.json({ panicMode, message: panicMode ? '🚨 Placements gelés' : '✅ Placements repris' });
+  panicMode = true;
+  console.log(`🚨 Mode panique : ACTIVÉ`);
+  res.json({ success: true, panicMode, message: '🚨 Placements gelés' });
 });
 
 // DELETE /admin/panic → désactiver le freeze
 app.delete('/admin/panic', verifyAdmin, (_req, res) => {
   panicMode = false;
   console.log('✅ Mode panique désactivé');
-  res.json({ panicMode: false, message: '✅ Placements repris' });
+  res.json({ success: true, panicMode: false, message: '✅ Placements repris' });
 });
 
 // POST /admin/ban → bannir une IP
