@@ -70,7 +70,7 @@ async function saveAdminState() {
 }
 
 // ── Rate limiters ──────────────────────────────────────
-const COOLDOWN_SECS   = 30;
+const COOLDOWN_SECS   = 5;
 const CHAT_LIMIT_SECS = 3; // 1 message toutes les 3s
 
 const rateLimiterByUID = new RateLimiterMemory({
