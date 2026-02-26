@@ -37,7 +37,7 @@ let panicMode    = false;
 const ADMIN_KEY  = process.env.ADMIN_KEY || 'changeme-avant-prod'; // variable d'env en prod
 
 // ── Rate limiters ──────────────────────────────────────
-const COOLDOWN_SECS = 5;
+const COOLDOWN_SECS = 60;
 
 const rateLimiterByUID = new RateLimiterMemory({
   points: 1, duration: COOLDOWN_SECS, blockDuration: COOLDOWN_SECS,
