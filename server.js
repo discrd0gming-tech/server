@@ -2,23 +2,28 @@ const express = require('express');
 const cors    = require('cors');
 const { RateLimiterMemory } = require('rate-limiter-flexible');
 
-// ── Firebase SDK ───────────────────────────────────────
-const { initializeApp }              = require('firebase/app');
-const { getDatabase, ref, set, get } = require('firebase/database');
-const { getApps }                    = require('firebase/app');
+// ── Firebase Admin SDK ───────────────────────────────
+const admin = require('firebase-admin');
 
-const firebaseConfig = {
-  apiKey:            'AIzaSyAOjsSZrGmHK3E5QjGT-IamhPX9QLOt_Qk',
-  authDomain:        'pixelwar2-69b05.firebaseapp.com',
-  databaseURL:       'https://pixelwar2-69b05-default-rtdb.europe-west1.firebasedatabase.app',
-  projectId:         'pixelwar2-69b05',
-  storageBucket:     'pixelwar2-69b05.firebasestorage.app',
-  messagingSenderId: '216084370377',
-  appId:             '1:216084370377:web:c9ab6b4f22a5829898ce18',
+const serviceAccount = {
+  "type": "service_account",
+  "project_id": "pixelwar2-69b05",
+  "private_key": process.env.FIREBASE_PRIVATE_KEY || "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC5...\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-xxxxx@pixelwar2-69b05.iam.gserviceaccount.com",
+  "client_id": "123456789012345678901",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token"
 };
 
-const firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-const db          = getDatabase(firebaseApp);
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL: "https://pixelwar2-69b05-default-rtdb.europe-west1.firebasedatabase.app"
+  });
+}
+
+const db = admin.database();
+const { ref, set, get } = db;
 
 // ── Express ────────────────────────────────────────────
 const app  = express();
