@@ -39,15 +39,32 @@ if (!admin.apps.length) {
     
     // Créer un objet compatible avec l'API Admin
     global.db = {
-      ref: (path) => db.ref ? db.ref(path) : { path },
-      set: (ref, data) => ref.set ? ref.set(data) : Promise.resolve(),
-      get: (ref) => ref.get ? ref.get() : Promise.resolve({ val: () => null })
+      ref: (path) => {
+        const dbRef = db.ref(path);
+        return {
+          set: (data) => dbRef.set(data),
+          get: () => dbRef.get().then(snap => ({ val: () => snap.val() })),
+          path: path
+        };
+      }
     };
   }
 }
 
 const db = admin.apps.length ? admin.database() : global.db;
-const { ref, set, get } = db;
+
+// Helper functions pour la compatibilité
+function ref(path) {
+  return db.ref(path);
+}
+
+function set(dbRef, data) {
+  return dbRef.set(data);
+}
+
+function get(dbRef) {
+  return dbRef.get();
+}
 
 // ── Express ────────────────────────────────────────────
 const app  = express();
