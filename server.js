@@ -84,23 +84,44 @@ function validCoords(x, y) {
       && x >= 0 && x < SIZE && y >= 0 && y < SIZE;
 }
 
-// ── Vérification token Firebase ────────────────────────
+// ── Firebase Admin (pour écrire en bypassant les règles + vérifier tokens) ──
 let adminAuth = null;
+let adminDb   = null;
 try {
-  const admin   = require('firebase-admin');
-  const keyPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  if (!admin.apps.length && keyPath) {
+  const admin = require('firebase-admin');
+  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+
+  if (!admin.apps.length && serviceAccountJson) {
+    const serviceAccount = JSON.parse(serviceAccountJson);
     admin.initializeApp({
-      credential:  admin.credential.applicationDefault(),
+      credential:  admin.credential.cert(serviceAccount),
       databaseURL: firebaseConfig.databaseURL,
     });
     adminAuth = admin.auth();
-    console.log('🔐 Vérification tokens Firebase : ACTIVÉE');
-  } else {
-    console.warn('⚠️  Mode dév : tokens non vérifiés (GOOGLE_APPLICATION_CREDENTIALS non défini)');
+    adminDb   = admin.database();
+    console.log('🔐 Firebase Admin : ACTIVÉ (tokens vérifiés, DB sécurisée)');
+  } else if (!serviceAccountJson) {
+    console.warn('⚠️  FIREBASE_SERVICE_ACCOUNT non défini → mode dév (non sécurisé)');
   }
 } catch (e) {
-  console.warn('⚠️  firebase-admin absent → tokens non vérifiés en dev');
+  console.warn('⚠️  Firebase Admin erreur :', e.message);
+}
+
+// Écrire dans Firebase (Admin SDK si dispo, sinon SDK web)
+async function firebaseSet(path, value) {
+  if (adminDb) {
+    await adminDb.ref(path).set(value);
+  } else {
+    await set(ref(db, path), value);
+  }
+}
+
+async function firebaseUpdate(path, value) {
+  if (adminDb) {
+    await adminDb.ref(path).update(value);
+  } else {
+    await update(ref(db, path), value);
+  }
 }
 
 async function verifyToken(req, res, next) {
@@ -201,7 +222,7 @@ app.post('/place-pixel', verifyToken, async (req, res) => {
   const pixel = { color: color.toLowerCase(), pseudo, ts: Date.now() };
 
   try {
-    await set(ref(db, `grid/${x}_${y}`), pixel);
+    await firebaseSet(`grid/${x}_${y}`, pixel);
   } catch (e) {
     return res.status(500).json({ error: 'Erreur serveur' });
   }
@@ -243,7 +264,11 @@ app.post('/chat', verifyToken, async (req, res) => {
 
   // Écriture dans Firebase
   try {
-    await push(ref(db, 'chat'), { pseudo, text, ts: Date.now() });
+    if (adminDb) {
+      await adminDb.ref('chat').push({ pseudo, text, ts: Date.now() });
+    } else {
+      await push(ref(db, 'chat'), { pseudo, text, ts: Date.now() });
+    }
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: 'Erreur serveur' });
@@ -311,7 +336,7 @@ app.post('/admin/clear-region', verifyAdmin, async (req, res) => {
       }
     }
     
-    await update(ref(db, 'grid'), updates);
+    await set(ref(db, 'grid'), updates);
     console.log(`🗑️ Région effacée : (${minX},${minY}) → (${maxX},${maxY})`);
     
     res.json({ 
@@ -326,7 +351,7 @@ app.post('/admin/clear-region', verifyAdmin, async (req, res) => {
 
 app.post('/admin/reset-grid', verifyAdmin, async (_req, res) => {
   try {
-    await set(ref(db, 'grid'), null);
+    await firebaseSet('grid', null);
     console.log('🗑️  Grille réinitialisée');
     res.json({ success: true, message: 'Grille vidée' });
   } catch (e) {
