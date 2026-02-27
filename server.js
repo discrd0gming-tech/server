@@ -78,7 +78,7 @@ function getIP(req) {
 
 // ── Validation ─────────────────────────────────────────
 const COLOR_RE = /^#[0-9a-fA-F]{6}$/;
-const SIZE     = 50;
+const SIZE     = 100;
 
 function validCoords(x, y) {
   return Number.isInteger(x) && Number.isInteger(y)
