@@ -36,37 +36,21 @@ if (!ADMIN_KEY) {
 app.use(cors({ origin: process.env.ALLOWED_ORIGIN || '*' }));
 app.use(express.json({ limit: '10kb' })); // limite taille body
 
-// ── État persisté dans Firebase ────────────────────────
-// panicMode et bannedIPs survivent aux redémarrages serveur
+// ── État admin (mémoire uniquement) ────────────────────
+// panicMode : remis à false au redémarrage (comportement voulu)
+// bannedIPs : perdus au redémarrage → à refaire si nécessaire
+// Pour persister les bans, utilisez les règles Firebase directement
 let panicMode = false;
 let bannedIPs = new Set();
 
-// Charger l'état admin depuis Firebase au démarrage
 async function loadAdminState() {
-  try {
-    const snap = await get(ref(db, 'admin'));
-    const data = snap.val();
-    if (data) {
-      panicMode = data.panicMode || false;
-      bannedIPs = new Set(data.bannedIPs || []);
-      console.log(`🛡️  État admin chargé : panic=${panicMode}, bans=${bannedIPs.size}`);
-    }
-  } catch (e) {
-    console.error('Erreur chargement état admin:', e.message);
-  }
+  // Rien à charger — état repart à zéro au redémarrage
+  console.log(`🛡️  Admin prêt : panic=false, bans=0`);
 }
 
-// Sauvegarder l'état admin dans Firebase
 async function saveAdminState() {
-  try {
-    await set(ref(db, 'admin'), {
-      panicMode,
-      bannedIPs: [...bannedIPs],
-      updatedAt: Date.now(),
-    });
-  } catch (e) {
-    console.error('Erreur sauvegarde état admin:', e.message);
-  }
+  // No-op : on ne persiste plus dans Firebase pour éviter les erreurs de règles
+  // Le panicMode et les bans sont en mémoire RAM du serveur
 }
 
 // ── Rate limiters ──────────────────────────────────────
