@@ -26,7 +26,8 @@ const PORT = process.env.PORT || 3001;
 // ── Admin key ──────────────────────────────────────────
 // En prod : définir la variable d'environnement ADMIN_KEY
 // Ex sur Railway : Settings → Variables → ADMIN_KEY=monMotDePasseSecret
-const ADMIN_KEY = process.env.ADMIN_KEY;
+const ADMIN_KEY      = process.env.ADMIN_KEY;
+const HCAPTCHA_SECRET = process.env.HCAPTCHA_SECRET || '';
 if (!ADMIN_KEY) {
   console.error('⛔ ADMIN_KEY non définie ! Définissez la variable d\'environnement ADMIN_KEY avant de lancer en prod.');
   console.warn('   En dev : ADMIN_KEY=secret node server.js');
@@ -160,6 +161,26 @@ function verifyAdmin(req, res, next) {
 }
 
 // ── Routes publiques ───────────────────────────────────
+
+// POST /verify-captcha — vérifier le token hCaptcha
+app.post('/verify-captcha', async (req, res) => {
+  const { token } = req.body;
+  if (!token) return res.status(400).json({ success: false, error: 'Token manquant' });
+
+  try {
+    const response = await fetch('https://hcaptcha.com/siteverify', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body:    `secret=${HCAPTCHA_SECRET}&response=${token}`,
+    });
+    const data = await response.json();
+    res.json({ success: data.success === true });
+  } catch (e) {
+    console.error('hCaptcha verify error:', e.message);
+    res.json({ success: true }); // fail open pour ne pas bloquer les joueurs
+  }
+});
+
 app.get('/status', (_req, res) => {
   res.json({ ok: true, panicMode, gridSize: SIZE, timestamp: Date.now() });
 });
@@ -334,7 +355,7 @@ app.post('/admin/clear-region', verifyAdmin, async (req, res) => {
       const updates = {};
       for (let x = minX; x <= maxX; x++)
         for (let y = minY; y <= maxY; y++)
-          updates[`${x}_${y}`] = { color: '#ffffff', pseudo: 'Admin', ts };
+          updates[`${x}_${y}`] = { color: '#000000', pseudo: 'Admin', ts };
       await adminDb.ref('grid').update(updates);
     } else {
       // Fallback SDK web (règles permissives requises)
