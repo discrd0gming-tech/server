@@ -311,7 +311,7 @@ app.post('/admin/clear-region', verifyAdmin, async (req, res) => {
       }
     }
     
-    await set(ref(db, 'grid'), updates);
+    await update(ref(db, 'grid'), updates);
     console.log(`🗑️ Région effacée : (${minX},${minY}) → (${maxX},${maxY})`);
     
     res.json({ 
