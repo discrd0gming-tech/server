@@ -162,10 +162,18 @@ function verifyAdmin(req, res, next) {
 
 // ── Routes publiques ───────────────────────────────────
 
-// POST /verify-captcha — vérifier le token hCaptcha
-app.post('/verify-captcha', async (req, res) => {
+// UIDs ayant passé le captcha (mémoire serveur)
+const captchaVerifiedUIDs = new Set();
+
+// POST /verify-captcha — vérifier le token hCaptcha et lier à l'UID
+app.post('/verify-captcha', verifyToken, async (req, res) => {
   const { token } = req.body;
   if (!token) return res.status(400).json({ success: false, error: 'Token manquant' });
+
+  // Déjà vérifié pour cet UID
+  if (captchaVerifiedUIDs.has(req.uid)) {
+    return res.json({ success: true });
+  }
 
   try {
     const response = await fetch('https://hcaptcha.com/siteverify', {
@@ -174,10 +182,14 @@ app.post('/verify-captcha', async (req, res) => {
       body:    `secret=${HCAPTCHA_SECRET}&response=${token}`,
     });
     const data = await response.json();
+    if (data.success) {
+      captchaVerifiedUIDs.add(req.uid);
+      console.log(`✅ Captcha vérifié pour UID:${req.uid.slice(0,8)}`);
+    }
     res.json({ success: data.success === true });
   } catch (e) {
     console.error('hCaptcha verify error:', e.message);
-    res.json({ success: true }); // fail open pour ne pas bloquer les joueurs
+    res.json({ success: false });
   }
 });
 
