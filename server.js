@@ -328,15 +328,22 @@ app.post('/admin/clear-region', verifyAdmin, async (req, res) => {
   const maxY = Math.max(0, Math.min(SIZE - 1, Math.max(cy1, cy2)));
   
   try {
-    // Effacer la région dans Firebase
-    const updates = {};
-    for (let x = minX; x <= maxX; x++) {
-      for (let y = minY; y <= maxY; y++) {
-        updates[`${x}_${y}`] = { color: '#000000', pseudo: 'System', ts: Date.now() };
-      }
+    const ts = Date.now();
+    if (adminDb) {
+      // Admin SDK : update direct sur grid/
+      const updates = {};
+      for (let x = minX; x <= maxX; x++)
+        for (let y = minY; y <= maxY; y++)
+          updates[`${x}_${y}`] = { color: '#ffffff', pseudo: 'Admin', ts };
+      await adminDb.ref('grid').update(updates);
+    } else {
+      // Fallback SDK web (règles permissives requises)
+      const updates = {};
+      for (let x = minX; x <= maxX; x++)
+        for (let y = minY; y <= maxY; y++)
+          updates[`grid/${x}_${y}`] = { color: '#ffffff', pseudo: 'Admin', ts };
+      await update(ref(db), updates);
     }
-    
-    await set(ref(db, 'grid'), updates);
     console.log(`🗑️ Région effacée : (${minX},${minY}) → (${maxX},${maxY})`);
     
     res.json({ 
