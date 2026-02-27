@@ -166,12 +166,29 @@ function verifyAdmin(req, res, next) {
 const captchaVerifiedUIDs = new Set();
 
 // POST /verify-captcha — vérifier le token hCaptcha et lier à l'UID
-app.post('/verify-captcha', verifyToken, async (req, res) => {
+app.post('/verify-captcha', async (req, res) => {
   const { token } = req.body;
   if (!token) return res.status(400).json({ success: false, error: 'Token manquant' });
 
+  // UID optionnel — on essaie de le lire depuis le token si présent
+  let uid = 'anonymous';
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      if (adminAuth) {
+        const decoded = await adminAuth.verifyIdToken(token);
+        uid = decoded.uid;
+      } else {
+        const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString());
+        uid = payload.sub || payload.user_id || 'anonymous';
+      }
+    }
+  } catch (e) { /* token absent ou invalide, on continue */ }
+  req.uid = uid;
+
   // Déjà vérifié pour cet UID
-  if (captchaVerifiedUIDs.has(req.uid)) {
+  if (uid !== 'anonymous' && captchaVerifiedUIDs.has(uid)) {
     return res.json({ success: true });
   }
 
