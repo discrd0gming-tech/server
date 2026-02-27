@@ -4,7 +4,7 @@ const { RateLimiterMemory } = require('rate-limiter-flexible');
 
 // ── Firebase SDK ───────────────────────────────────────
 const { initializeApp, getApps }     = require('firebase/app');
-const { getDatabase, ref, set, get, onValue } = require('firebase/database');
+const { getDatabase, ref, set, get, update, push } = require('firebase/database');
 
 const firebaseConfig = {
   apiKey:            'AIzaSyAOjsSZrGmHK3E5QjGT-IamhPX9QLOt_Qk',
@@ -259,9 +259,7 @@ app.post('/chat', verifyToken, async (req, res) => {
 
   // Écriture dans Firebase
   try {
-    const chatRef = ref(db, 'chat');
-    const { push } = require('firebase/database');
-    await push(chatRef, { pseudo, text, ts: Date.now() });
+    await push(ref(db, 'chat'), { pseudo, text, ts: Date.now() });
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: 'Erreur serveur' });
